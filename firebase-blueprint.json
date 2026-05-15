@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile data stored in Firestore. Complements Firebase Auth data.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "nasabah"] },
+        "balance": { "type": "number" },
+        "joinDate": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["name", "email", "role", "balance", "joinDate", "isActive"]
+    },
+    "HargaSampah": {
+      "title": "Harga Sampah",
+      "description": "Waste price configuration.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "pricePerKg": { "type": "number" },
+        "lastUpdate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "name", "category", "pricePerKg", "lastUpdate"]
+    },
+    "Setoran": {
+      "title": "Setoran Sampah",
+      "description": "Waste deposit transaction.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "sampahId": { "type": "string" },
+        "weight": { "type": "number" },
+        "pricePerKg": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "sampahId", "weight", "pricePerKg", "subtotal", "date"]
+    },
+    "Penarikan": {
+      "title": "Penarikan Saldo",
+      "description": "Balance withdrawal request.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "method": { "type": "string" },
+        "notes": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["userId", "amount", "method", "date", "status"]
+    },
+    "Penjualan": {
+      "title": "Penjualan Pengepul",
+      "description": "Sale of waste to collectors.",
+      "type": "object",
+      "properties": {
+        "pengepulName": { "type": "string" },
+        "sampahId": { "type": "string" },
+        "weight": { "type": "number" },
+        "pricePerKg": { "type": "number" },
+        "total": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["pengepulName", "sampahId", "weight", "pricePerKg", "total", "date"]
+    },
+    "UserSession": {
+      "title": "User Session",
+      "description": "Active user session tracking.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "browser": { "type": "string" },
+        "ip": { "type": "string" },
+        "loginDate": { "type": "string", "format": "date-time" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "isCurrent": { "type": "boolean" }
+      },
+      "required": ["userId", "loginDate", "lastActive", "isCurrent"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Collection of user profiles."
+    },
+    "hargaSampah": {
+      "schema": "HargaSampah",
+      "description": "Waste prices master data."
+    },
+    "setoran": {
+      "schema": "Setoran",
+      "description": "Historical waste deposits."
+    },
+    "penarikan": {
+      "schema": "Penarikan",
+      "description": "Withdrawal requests."
+    },
+    "penjualan": {
+      "schema": "Penjualan",
+      "description": "Sales to collectors records."
+    },
+    "sessions": {
+      "schema": "UserSession",
+      "description": "User login sessions tracker."
+    }
+  }
+}

@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'taganakabsrg@gmail.com' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role', 'balance', 'joinDate', 'isActive']) &&
+             data.keys().size() == 6 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email == (isSignedIn() ? request.auth.token.email : data.email) &&
+             data.role in ['admin', 'nasabah'] &&
+             data.balance is number &&
+             data.isActive is bool;
+    }
+
+    function isValidHargaSampah(data) {
+      return data.keys().hasAll(['code', 'name', 'category', 'pricePerKg', 'lastUpdate']) &&
+             data.code is string && data.code.size() > 0 &&
+             data.name is string && data.name.size() > 0 &&
+             data.category is string &&
+             data.pricePerKg is number && data.pricePerKg >= 0;
+    }
+
+    function isValidSetoran(data) {
+      return data.keys().hasAll(['userId', 'sampahId', 'weight', 'pricePerKg', 'subtotal', 'date']) &&
+             isValidId(data.userId) &&
+             isValidId(data.sampahId) &&
+             data.weight is number && data.weight > 0 &&
+             data.subtotal == data.weight * data.pricePerKg;
+    }
+
+    function isValidPenarikan(data) {
+      return data.keys().hasAll(['userId', 'amount', 'method', 'date', 'status']) &&
+             data.status in ['pending', 'approved', 'rejected'];
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if (isOwner(userId) && isValidId(userId)) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) && incoming().role == 'nasabah' && incoming().balance == 0;
+      allow update: if (isOwner(userId) && isValidId(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'address', 'phone'])) || isAdmin();
+    }
+
+    match /hargaSampah/{item} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isValidId(item) && isValidHargaSampah(incoming());
+    }
+
+    match /setoran/{id} {
+      allow get: if (isAdmin() || (isSignedIn() && existing().userId == request.auth.uid)) && isValidId(id);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() && isValidId(id) && isValidSetoran(incoming()) && 
+                    exists(/databases/$(database)/documents/users/$(incoming().userId));
+      allow delete: if isAdmin() && isValidId(id);
+    }
+
+    match /penarikan/{id} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidPenarikan(incoming()) && incoming().userId == request.auth.uid && incoming().status == 'pending';
+      allow update: if isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+    }
+
+    match /penjualan/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /sessions/{id} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive', 'isCurrent']);
+    }
+  }
+}
